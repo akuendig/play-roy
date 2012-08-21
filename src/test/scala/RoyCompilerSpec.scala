@@ -8,15 +8,13 @@ var a = 5;
 var f = function(x) {
     return 2 * x;
 };
-})();
-"""
+})();"""
   
   val okImportJs = """(function() {
 var f = function(x) {
     return a(x);
 };
-})();
-"""
+})();"""
 
   describe("RoyCompiler") {
     it("should compile well-formed roy file") {
@@ -32,17 +30,18 @@ var f = function(x) {
       assert(full === okImportJs)
       assert(minified.orNull === okImportJs)
       assert(deps.length === 2)
-      assert(deps(0).getName() === "./imported")
-      assert(deps(1).getName() === "./util")
+      assert(deps(0).getName() === "imported")
+      assert(deps(1).getName() === "util")
     }
     it("should fail to compile malformed roy file") {
       val royFile = new File("src/test/resources/broken.roy")
+      val expectedMessage = """Compilation error [roy compiler: Unexpected 'EOF']"""
+      
       val thrown = intercept[sbt.PlayExceptions.AssetCompilationException] {
         RoyCompiler.compile(royFile, Nil)
       }
-      val expectedMessage =
-        """Compilation error [Sass compiler: Syntax error: Invalid CSS after "	display: none;": expected "}", was ""]"""
-      assert(thrown.line.getOrElse(0) === 3)
+
+      assert(thrown.line.getOrElse(0) === 1)
       assert(thrown.getMessage === expectedMessage)
     }
   }

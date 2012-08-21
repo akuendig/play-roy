@@ -8,14 +8,16 @@ import io.Source._
 
 object RoyCompiler {
   def compile(royFile: File, options: Seq[String]): (String, Option[String], Seq[File]) = {
-    val compiler = this.getClass.getClassLoader.getResource("src/compile.js")
+    val compiler = this.getClass.getResource("/src/compile.js").toURI.getPath
 
     try {
       val (jsOutput, dependencies) = runCompiler(
-        Seq("node", compiler.getPath, "-b", "--stdio", royFile.getAbsolutePath) ++ options
+          Seq("node", compiler, "-b", "--stdio") ++ options,
+          royFile
         )
       val (compressedJsOutput, _) = runCompiler(
-        Seq("node", compiler.getPath, "-b", "--stdio", royFile.getAbsolutePath) ++ options
+          Seq("node", compiler, "-b", "--stdio") ++ options,
+          royFile
         )
 
       (jsOutput, Some(compressedJsOutput), dependencies.map { new File(_) } )
@@ -28,46 +30,37 @@ object RoyCompiler {
 
   private val DependencyLine = """Using browser module: (.*)""".r
 
-  private def runCompiler(command: ProcessBuilder): (String, Seq[String]) = {
+  private def runCompiler(command: ProcessBuilder, file: File): (String, Seq[String]) = {
     val err = new StringBuilder
     val out = new StringBuilder
 
     val capturer = ProcessLogger(
-      out.append(_),
-      err.append(_))
+      o => out.append(o + "\n"),
+      e => err.append(e + "\n"))
 
-    val process = command.run(capturer)
+    val exitValue = file #> command ! capturer
 
-    if (process.exitValue == 0) {
+    if (exitValue == 0) {
       val dependencies = out.lines.collect {
           case DependencyLine(f) => f
         }
 
-      (DependencyLine.replaceAllIn(out, ""), dependencies.toList.distinct)
+      (DependencyLine.replaceAllIn(out, "").trim, dependencies.toList.distinct)
     } else
       throw new RoyCompilationException(err.toString)
   }
 
-  private val LocationLine = """\s*on line (\d+) of (.*)""".r
+  private val LocationLine = """Error: .* on line (\d+): (.*)""".r
 
   private class RoyCompilationException(stderr: String) extends RuntimeException {
 
-    val (file: Option[File], line: Int, column: Int, message: String) = parseError(stderr)
+    val (file: Option[File], line: Int, column: Int, message: String) = {
 
-    private def parseError(error: String): (Option[File], Int, Int, String) = {
-      var line = 0
-      var seen = 0
-      var column = 0
-      var file : Option[File] = None
-      var message = "Unknown error, try running roy directly"
-      for (errline: String <- augmentString(error).lines) {
-        errline match {
-          case LocationLine(l, f) => { line = l.toInt; file = Some(new File(f)); }
-          case other if (seen == 0) => { message = other; seen += 1 }
-          case other =>
-        }
-      }
-      (file, line, column, message)
+      val err: Option[(Option[File], Int, Int, String)] = for {
+        LocationLine(l, msg) <- LocationLine findFirstIn stderr
+      } yield (None, l.toInt, 0, msg)
+
+      err.getOrElse((None, 0, 0, stderr))
     }
   }
 }
