@@ -1,20 +1,17 @@
-package com.kuendig
+package com.kuendig.roy
 
 import sbt._
 import sbt.Keys._
-import PlayProject._
 
 object RoyPlugin extends Plugin {
     val royEntryPoints = SettingKey[PathFinder]("play-roy-entry-points")
     val royOptions = SettingKey[Seq[String]]("play-roy-options")
     val royWatcher = PlayProject.AssetsCompiler("roy",
-        { file => (file ** "*.roy") },
-        royEntryPoints,
-        { (name, min) => 
-            name.replace(".roy", if (min) ".min.js" else ".js") 
-        },
+        (_ ** "*.roy"),
+        royEntryPoints in Compile,
+        { (name, min) => name.replace(".roy", if (min) ".min.js" else ".js") },
         { RoyCompiler.compile _ },
-        royOptions
+        royOptions in Compile
     )
 
     override val settings = Seq(

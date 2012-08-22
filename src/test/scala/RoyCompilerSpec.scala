@@ -1,6 +1,6 @@
 import java.io.File
 import org.scalatest.FunSpec
-import com.kuendig.RoyCompiler
+import com.kuendig.roy.RoyCompiler
 
 class RoyCompilerSpec extends FunSpec {
   val okJs ="""(function() {

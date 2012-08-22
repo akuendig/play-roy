@@ -1,28 +1,34 @@
-package com.kuendig
+package com.kuendig.roy
 
-import sbt.PlayExceptions.AssetCompilationException
-import java.io.File
-import scala.sys.process._
 import sbt.IO
+import sbt.PlayExceptions._
+
+import play.core.jscompile.JavascriptCompiler
+
+import java.io.File
+
+import scala.sys.process._
+
 import io.Source._
 
 object RoyCompiler {
   def compile(royFile: File, options: Seq[String]): (String, Option[String], Seq[File]) = {
-    val compiler = this.getClass.getResource("/src/compile.js").toURI.getPath
+    import scala.util.control.Exception._
 
     try {
       val (jsOutput, dependencies) = runCompiler(
-          Seq("node", compiler, "-b", "--stdio") ++ options,
-          royFile
-        )
-      val (compressedJsOutput, _) = runCompiler(
-          Seq("node", compiler, "-b", "--stdio") ++ options,
+          Seq("roy", "-b", "--stdio") ++ options,
           royFile
         )
 
-      (jsOutput, Some(compressedJsOutput), dependencies.map { new File(_) } )
+      val minified =
+        catching(classOf[CompilationException])
+        .opt(JavascriptCompiler.minify(jsOutput, Some(royFile.getName())))
+
+      (jsOutput, minified, Seq(royFile) ++ dependencies.map(new File(_)) )
     } catch {
       case e: RoyCompilationException => {
+        Console println ("Exception::: " + e.message)
         throw AssetCompilationException(e.file.orElse(Some(royFile)), "roy compiler: " + e.message, e.line, e.column)
       }
     }

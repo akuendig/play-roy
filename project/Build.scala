@@ -3,7 +3,7 @@ import sbt.Keys._
 
 object PluginBuild extends Build {
 
-  lazy val playSass = Project(
+  lazy val playRoy = Project(
     id = "play-roy", base = file(".")
   )
 
