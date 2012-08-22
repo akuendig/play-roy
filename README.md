@@ -1,4 +1,4 @@
-### play-roy
+# play-roy
 
 [Roy][roy] asset handling plugin for [Play 2.0][play]. Implemented as [sbt][sbt] plugin.
 
